@@ -1,7 +1,7 @@
 from aiogram import Bot
 
 from config import ADMIN_CHAT_ID
-from questions import QUESTIONS, TZ_TEMPLATE
+from questions import QUESTIONS, classify_scope, render_tz
 from session import Session
 from utils import split_long_message
 
@@ -24,7 +24,10 @@ def _slot_value(session: Session, key: str) -> str:
 
 def build_filled_tz(session: Session) -> str:
     values = {q.key: _slot_value(session, q.key) for q in QUESTIONS}
-    return TZ_TEMPLATE.format(**values)
+    scope_answer = session.answers.get("scope")
+    scope_text = scope_answer.text if scope_answer and scope_answer.kind == "text" else None
+    scope_kind = classify_scope(scope_text)
+    return render_tz(values, scope_kind)
 
 
 def _client_header(session: Session) -> str:

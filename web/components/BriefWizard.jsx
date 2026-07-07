@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { QUESTIONS } from "../lib/questions";
+import { QUESTIONS, SCOPE_CHOICES } from "../lib/questions";
 
 const STEP_INTRO = "intro";
 const STEP_QUESTIONS = "questions";
@@ -154,6 +154,13 @@ export default function BriefWizard() {
     submitBrief(updated);
   };
 
+  const handleQuickChoice = (choice) => {
+    const updated = { ...answers, [question.key]: { kind: "text", text: choice } };
+    setAnswers(updated);
+    setVoiceDraft(null);
+    goNext(updated);
+  };
+
   const submitBrief = async (finalAnswers) => {
     setSubmitting(true);
     setErrorMessage("");
@@ -224,6 +231,22 @@ export default function BriefWizard() {
         </p>
         <h2>{question.text}</h2>
         {question.hint && <p className="hint">{question.hint}</p>}
+
+        {question.key === "scope" && (
+          <div className="choice-chips">
+            {SCOPE_CHOICES.map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                className="chip"
+                onClick={() => handleQuickChoice(choice)}
+                disabled={submitting}
+              >
+                {choice}
+              </button>
+            ))}
+          </div>
+        )}
 
         <textarea
           className="text-input"

@@ -22,7 +22,7 @@ export const QUESTIONS = [
   {
     key: "scope",
     text: "Sizga qaysi biri kerak: HR-agent, moliya-agent, yoki ikkalasi?",
-    hint: "Ikkalasini birga tanlash mumkin.",
+    hint: "Pastdagi tugmalardan birini tanlang yoki o'z so'zingiz bilan yozing.",
   },
   {
     key: "hr_modules",
@@ -86,58 +86,103 @@ export const QUESTIONS = [
   },
 ];
 
-export const TZ_TEMPLATE = `📋 TEXNIK TOPSHIRIQ — AI-agentlar
+// 5-savolga tugma orqali beriladigan tayyor javoblar. Matn har doim
+// classifyScope() orqali o'qiladi, shuning uchun mijoz o'z so'zi bilan
+// yozsa ham (masalan "faqat HR kerak") to'g'ri aniqlanadi.
+export const SCOPE_CHOICES = ["HR", "Moliya", "HR + Moliya"];
 
-1. Kompaniya profili
-   • Nomi va sohasi: {company_sector}
-   • Xodimlar soni: {employees}
-   • Do'kon/nuqta va shaharlar: {locations}
-   • Hozirgi tizimlar: {current_systems}
+const HR_KEYWORDS = ["hr", "кадр", "ходим", "hodim"];
+const FINANCE_KEYWORDS = ["moliya", "молия", "финанс", "financ", "buxgalter", "бухгалт"];
 
-2. Yechim doirasi (HR / Moliya / ikkalasi): {scope}
-
-3. HR-agent
-   • Kerakli modullar: {hr_modules}
-   • Hajm (vakansiya/hujjat/oy): {hr_volume}
-
-4. Moliya-agent
-   • Kerakli funksiyalar: {fin_functions}
-   • Buxgalteriya tizimi: {fin_system}
-
-5. Integratsiyalar
-   • Bank/to'lov: {payments}
-   • Boshqa: {other_integrations}
-
-6. Kanallar va tillar
-   • Kanallar: {channels}
-   • Tillar: {languages}
-
-7. Ma'lumot va xavfsizlik
-   • Joylashuv: {hosting}
-   • Rollar/himoya: {roles_security}
-
-8. Muddat va byudjet
-   • Muddat: {deadline}
-   • Byudjet: {budget}
-
-9. Keyingi qadam
-   Ozvlcorp jamoasi ushbu brif asosida taklif va aniq narx tuzib beradi. 24 soat ichida bog'lanamiz.`;
+// Erkin matnni "hr" | "finance" | "both" ga aylantiradi. Noaniq yoki bo'sh
+// javob xavfsiz tomonga — "both" ga tushadi, shunda ТЗda hech qanday
+// bo'lim yo'qolmaydi.
+export function classifyScope(text) {
+  if (!text) return "both";
+  const t = text.toLowerCase();
+  const hasHr = HR_KEYWORDS.some((k) => t.includes(k));
+  const hasFin = FINANCE_KEYWORDS.some((k) => t.includes(k));
+  if (hasHr && hasFin) return "both";
+  if (hasHr) return "hr";
+  if (hasFin) return "finance";
+  return "both";
+}
 
 const VOICE_PLACEHOLDER = "[🎤 Ovozli javob — audio adminga alohida yuborildi]";
 const SKIPPED_PLACEHOLDER = "— (o'tkazib yuborildi)";
 const NO_ANSWER_PLACEHOLDER = "— (javob berilmagan)";
 
-export function fillTemplate(answers) {
-  let result = TZ_TEMPLATE;
-  for (const q of QUESTIONS) {
-    const answer = answers[q.key];
-    let value = NO_ANSWER_PLACEHOLDER;
-    if (answer) {
-      if (answer.kind === "voice") value = VOICE_PLACEHOLDER;
-      else if (answer.kind === "skipped") value = SKIPPED_PLACEHOLDER;
-      else if (answer.kind === "text") value = (answer.text || "").trim() || NO_ANSWER_PLACEHOLDER;
-    }
-    result = result.replaceAll(`{${q.key}}`, value);
+function slotValue(answers, key) {
+  const answer = answers[key];
+  if (!answer) return NO_ANSWER_PLACEHOLDER;
+  if (answer.kind === "voice") return VOICE_PLACEHOLDER;
+  if (answer.kind === "skipped") return SKIPPED_PLACEHOLDER;
+  if (answer.kind === "text") return (answer.text || "").trim() || NO_ANSWER_PLACEHOLDER;
+  return NO_ANSWER_PLACEHOLDER;
+}
+
+// Yakuniy ТЗ matnini quradi; scopeKind ga qarab HR/Moliya bo'limlarini
+// qo'shadi yoki tashlab ketadi, qolgan bo'limlarni qayta raqamlaydi.
+export function renderTz(answers, scopeKind) {
+  const v = (key) => slotValue(answers, key);
+  const lines = ["📋 TEXNIK TOPSHIRIQ — AI-agentlar", ""];
+
+  lines.push("1. Kompaniya profili");
+  lines.push(`   • Nomi va sohasi: ${v("company_sector")}`);
+  lines.push(`   • Xodimlar soni: ${v("employees")}`);
+  lines.push(`   • Do'kon/nuqta va shaharlar: ${v("locations")}`);
+  lines.push(`   • Hozirgi tizimlar: ${v("current_systems")}`);
+  lines.push("");
+
+  lines.push(`2. Yechim doirasi (HR / Moliya / ikkalasi): ${v("scope")}`);
+  lines.push("");
+
+  let sectionNum = 3;
+
+  if (scopeKind === "hr" || scopeKind === "both") {
+    lines.push(`${sectionNum}. HR-agent`);
+    lines.push(`   • Kerakli modullar: ${v("hr_modules")}`);
+    lines.push(`   • Hajm (vakansiya/hujjat/oy): ${v("hr_volume")}`);
+    lines.push("");
+    sectionNum += 1;
   }
-  return result;
+
+  if (scopeKind === "finance" || scopeKind === "both") {
+    lines.push(`${sectionNum}. Moliya-agent`);
+    lines.push(`   • Kerakli funksiyalar: ${v("fin_functions")}`);
+    lines.push(`   • Buxgalteriya tizimi: ${v("fin_system")}`);
+    lines.push("");
+    sectionNum += 1;
+  }
+
+  lines.push(`${sectionNum}. Integratsiyalar`);
+  lines.push(`   • Bank/to'lov: ${v("payments")}`);
+  lines.push(`   • Boshqa: ${v("other_integrations")}`);
+  lines.push("");
+  sectionNum += 1;
+
+  lines.push(`${sectionNum}. Kanallar va tillar`);
+  lines.push(`   • Kanallar: ${v("channels")}`);
+  lines.push(`   • Tillar: ${v("languages")}`);
+  lines.push("");
+  sectionNum += 1;
+
+  lines.push(`${sectionNum}. Ma'lumot va xavfsizlik`);
+  lines.push(`   • Joylashuv: ${v("hosting")}`);
+  lines.push(`   • Rollar/himoya: ${v("roles_security")}`);
+  lines.push("");
+  sectionNum += 1;
+
+  lines.push(`${sectionNum}. Muddat va byudjet`);
+  lines.push(`   • Muddat: ${v("deadline")}`);
+  lines.push(`   • Byudjet: ${v("budget")}`);
+  lines.push("");
+  sectionNum += 1;
+
+  lines.push(`${sectionNum}. Keyingi qadam`);
+  lines.push(
+    "   Ozvlcorp jamoasi ushbu brif asosida taklif va aniq narx tuzib beradi. 24 soat ichida bog'lanamiz."
+  );
+
+  return lines.join("\n");
 }

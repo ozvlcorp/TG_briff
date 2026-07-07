@@ -7,7 +7,7 @@ from aiogram.types import KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemo
 
 from admin import build_filled_tz, send_final_brief
 from config import BOT_TOKEN
-from questions import QUESTIONS
+from questions import QUESTIONS, SCOPE_CHOICES
 from session import Answer, Session, get, get_or_create, reset
 from utils import split_long_message
 
@@ -25,15 +25,13 @@ BTN_CANCEL = "❌ Bekor qilish"
 CONTROL_BUTTONS = {BTN_SKIP, BTN_BACK, BTN_FINISH, BTN_CANCEL}
 
 
-def brief_keyboard() -> ReplyKeyboardMarkup:
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=BTN_SKIP), KeyboardButton(text=BTN_BACK)],
-            [KeyboardButton(text=BTN_FINISH), KeyboardButton(text=BTN_CANCEL)],
-        ],
-        resize_keyboard=True,
-        one_time_keyboard=False,
-    )
+def brief_keyboard(question_key: str | None = None) -> ReplyKeyboardMarkup:
+    rows = []
+    if question_key == "scope":
+        rows.append([KeyboardButton(text=choice) for choice in SCOPE_CHOICES])
+    rows.append([KeyboardButton(text=BTN_SKIP), KeyboardButton(text=BTN_BACK)])
+    rows.append([KeyboardButton(text=BTN_FINISH), KeyboardButton(text=BTN_CANCEL)])
+    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True, one_time_keyboard=False)
 
 
 WELCOME_TEXT = (
@@ -64,7 +62,8 @@ async def _ask_current(message: types.Message, session: Session) -> None:
     if text is None:
         await _finalize(message, session)
         return
-    await message.answer(text, reply_markup=brief_keyboard(), parse_mode="Markdown")
+    q = session.current_question()
+    await message.answer(text, reply_markup=brief_keyboard(q.key if q else None), parse_mode="Markdown")
 
 
 async def _finalize(message: types.Message, session: Session) -> None:

@@ -1,4 +1,4 @@
-import { QUESTIONS, fillTemplate } from "../../../lib/questions";
+import { QUESTIONS, classifyScope, renderTz } from "../../../lib/questions";
 import { sendTelegramLongMessage, sendTelegramVoiceDocument } from "../../../lib/telegram";
 
 export const runtime = "nodejs";
@@ -52,7 +52,9 @@ export async function POST(request) {
     }
   }
 
-  const filledTz = fillTemplate(answers);
+  const scopeAnswer = answers.scope;
+  const scopeKind = classifyScope(scopeAnswer?.kind === "text" ? scopeAnswer.text : null);
+  const filledTz = renderTz(answers, scopeKind);
   const header = `👤 Yangi brif (veb-sayt)\nIsm/Kontakt: ${displayName(clientName, clientContact)}\n🕐 Vaqt: ${new Date().toISOString()}`;
 
   try {

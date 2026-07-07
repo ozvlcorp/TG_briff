@@ -32,7 +32,7 @@ QUESTIONS: list[Question] = [
     Question(
         key="scope",
         text="5/17. Sizga qaysi biri kerak: HR-agent, moliya-agent, yoki ikkalasi?",
-        hint="Ikkalasini birga tanlash mumkin.",
+        hint="Pastdagi tugmalardan birini bosing yoki o'z so'zingiz bilan yozing.",
     ),
     Question(
         key="hr_modules",
@@ -97,39 +97,94 @@ QUESTIONS: list[Question] = [
 ]
 
 
-TZ_TEMPLATE = """📋 TEXNIK TOPSHIRIQ — AI-agentlar
+# 5/17 savoliga tugma orqali beriladigan tayyor javoblar. Matn har doim
+# classify_scope() orqali o'qiladi, shuning uchun mijoz o'z so'zi bilan
+# yozsa ham (masalan "faqat HR kerak") to'g'ri aniqlanadi.
+SCOPE_CHOICES = ["HR", "Moliya", "HR + Moliya"]
 
-1. Kompaniya profili
-   • Nomi va sohasi: {company_sector}
-   • Xodimlar soni: {employees}
-   • Do'kon/nuqta va shaharlar: {locations}
-   • Hozirgi tizimlar: {current_systems}
+_HR_KEYWORDS = ("hr", "кадр", "ходим", "hodim")
+_FINANCE_KEYWORDS = ("moliya", "молия", "финанс", "financ", "buxgalter", "бухгалт")
 
-2. Yechim doirasi (HR / Moliya / ikkalasi): {scope}
 
-3. HR-agent
-   • Kerakli modullar: {hr_modules}
-   • Hajm (vakansiya/hujjat/oy): {hr_volume}
+def classify_scope(text: str | None) -> str:
+    """Erkin matnni 'hr' | 'finance' | 'both' ga aylantiradi.
 
-4. Moliya-agent
-   • Kerakli funksiyalar: {fin_functions}
-   • Buxgalteriya tizimi: {fin_system}
+    Noaniq yoki bo'sh javob (ovozli/o'tkazib yuborilgan) xavfsiz tomonga —
+    'both' ga tushadi, shunda ТЗda hech qanday bo'lim yo'qolmaydi.
+    """
+    if not text:
+        return "both"
+    t = text.lower()
+    has_hr = any(k in t for k in _HR_KEYWORDS)
+    has_fin = any(k in t for k in _FINANCE_KEYWORDS)
+    if has_hr and has_fin:
+        return "both"
+    if has_hr:
+        return "hr"
+    if has_fin:
+        return "finance"
+    return "both"
 
-5. Integratsiyalar
-   • Bank/to'lov: {payments}
-   • Boshqa: {other_integrations}
 
-6. Kanallar va tillar
-   • Kanallar: {channels}
-   • Tillar: {languages}
+def render_tz(values: dict[str, str], scope_kind: str) -> str:
+    """Yakuniy ТЗ matnini quradi; scope_kind ga qarab HR/Moliya bo'limlarini
+    qo'shadi yoki tashlab ketadi, qolgan bo'limlarni qayta raqamlaydi."""
+    lines = ["📋 TEXNIK TOPSHIRIQ — AI-agentlar", ""]
 
-7. Ma'lumot va xavfsizlik
-   • Joylashuv: {hosting}
-   • Rollar/himoya: {roles_security}
+    lines.append("1. Kompaniya profili")
+    lines.append(f"   • Nomi va sohasi: {values['company_sector']}")
+    lines.append(f"   • Xodimlar soni: {values['employees']}")
+    lines.append(f"   • Do'kon/nuqta va shaharlar: {values['locations']}")
+    lines.append(f"   • Hozirgi tizimlar: {values['current_systems']}")
+    lines.append("")
 
-8. Muddat va byudjet
-   • Muddat: {deadline}
-   • Byudjet: {budget}
+    lines.append(f"2. Yechim doirasi (HR / Moliya / ikkalasi): {values['scope']}")
+    lines.append("")
 
-9. Keyingi qadam
-   Ozvlcorp jamoasi ushbu brif asosida taklif va aniq narx tuzib beradi. 24 soat ichida bog'lanamiz."""
+    section_num = 3
+
+    if scope_kind in ("hr", "both"):
+        lines.append(f"{section_num}. HR-agent")
+        lines.append(f"   • Kerakli modullar: {values['hr_modules']}")
+        lines.append(f"   • Hajm (vakansiya/hujjat/oy): {values['hr_volume']}")
+        lines.append("")
+        section_num += 1
+
+    if scope_kind in ("finance", "both"):
+        lines.append(f"{section_num}. Moliya-agent")
+        lines.append(f"   • Kerakli funksiyalar: {values['fin_functions']}")
+        lines.append(f"   • Buxgalteriya tizimi: {values['fin_system']}")
+        lines.append("")
+        section_num += 1
+
+    lines.append(f"{section_num}. Integratsiyalar")
+    lines.append(f"   • Bank/to'lov: {values['payments']}")
+    lines.append(f"   • Boshqa: {values['other_integrations']}")
+    lines.append("")
+    section_num += 1
+
+    lines.append(f"{section_num}. Kanallar va tillar")
+    lines.append(f"   • Kanallar: {values['channels']}")
+    lines.append(f"   • Tillar: {values['languages']}")
+    lines.append("")
+    section_num += 1
+
+    lines.append(f"{section_num}. Ma'lumot va xavfsizlik")
+    lines.append(f"   • Joylashuv: {values['hosting']}")
+    lines.append(f"   • Rollar/himoya: {values['roles_security']}")
+    lines.append("")
+    section_num += 1
+
+    lines.append(f"{section_num}. Muddat va byudjet")
+    lines.append(f"   • Muddat: {values['deadline']}")
+    lines.append(f"   • Byudjet: {values['budget']}")
+    lines.append("")
+    section_num += 1
+
+    lines.append(f"{section_num}. Keyingi qadam")
+    lines.append(
+        "   Ozvlcorp jamoasi ushbu brif asosida taklif va aniq narx tuzib beradi. "
+        "24 soat ichida bog'lanamiz."
+    )
+
+    return "\n".join(lines)
