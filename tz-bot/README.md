@@ -43,6 +43,30 @@ Telegram'da botga `/start` yuboring — birinchi savol chiqishi kerak.
 
 Barcha savollar `questions.py` faylining `QUESTIONS` ro'yxatida. Yangi savol qo'shish yoki matnni o'zgartirish uchun shu ro'yxatni tahrir qiling. Yakuniy ТЗ shabloni ham shu faylda (`TZ_TEMPLATE`) — yangi `{slot}` qo'shsangiz, `questions.py` da mos `key` bilan savol qo'shing.
 
+## Deploy (Dokploy — o'z serveringizda)
+
+Loyihada `Dockerfile` bor, shuning uchun Dokploy botni to'g'ridan-to'g'ri build qilib ishlatadi. Bot long-polling ishlaydi — port ochish shart emas.
+
+1. Dokploy panelida yangi **Application** yarating.
+2. **Provider**: GitHub → `ozvlcorp/TG_briff` reposini ulang, branch: `claude/hr-finance-telegram-bot-qujm37` (yoki merge qilingach `main`).
+3. **Build Type**: `Dockerfile`.
+4. **Docker Context / Build Path**: `tz-bot` (Dockerfile shu papkada).
+5. **Environment Variables** bo'limiga qo'shing:
+   ```
+   BOT_TOKEN=<BotFather tokeni>
+   ADMIN_CHAT_ID=<sizning chat ID>
+   ```
+6. **Port**: kerak emas (bu veb-server emas, worker). Domain/port sozlashni o'tkazib yuboring.
+7. **Deploy** ni bosing.
+
+Deploy tugagach, loglar (Logs bo'limi) da quyidagi qatorni ko'rishingiz kerak:
+```
+Bot started as @<bot_username> ...
+```
+Shundan keyin Telegram'da botga `/start` yuboring — ishlashi kerak.
+
+> **Lokal tekshirish (ixtiyoriy):** `docker build -t tz-bot ./tz-bot && docker run --env-file tz-bot/.env tz-bot`
+
 ## Deploy (Railway / Render)
 
 **Railway.**
