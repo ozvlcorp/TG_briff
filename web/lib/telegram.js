@@ -16,21 +16,41 @@ export function splitLongMessage(text, limit = TELEGRAM_MESSAGE_LIMIT) {
   return chunks;
 }
 
+// Vercel env qiymatiga tasodifan qo'shtirnoq yoki bo'sh joy tushib qolishi mumkin.
+// Telegram guruh/superguruh ID'lari "-100..." ko'rinishida (manfiy) bo'ladi.
+export function normalizeChatId(raw) {
+  if (raw == null) return raw;
+  return String(raw).trim().replace(/^['"]|['"]$/g, "");
+}
+
 function apiUrl(botToken, method) {
   return `https://api.telegram.org/bot${botToken}/${method}`;
+}
+
+// Telegram xato holatida ba'zan HTTP 200 bilan {ok:false} qaytarishi mumkin,
+// shuning uchun faqat res.ok ga emas, javob tanasidagi ok maydoniga ham qaraymiz.
+async function parseTelegramResponse(res, method) {
+  const text = await res.text();
+  let data = null;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    // JSON emas — xom matnni xatoda ko'rsatamiz
+  }
+  if (!res.ok || !data || data.ok !== true) {
+    const description = data?.description || text || `HTTP ${res.status}`;
+    throw new Error(`Telegram ${method} failed: ${res.status} ${description}`);
+  }
+  return data;
 }
 
 export async function sendTelegramMessage(botToken, chatId, text) {
   const res = await fetch(apiUrl(botToken, "sendMessage"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text }),
+    body: JSON.stringify({ chat_id: normalizeChatId(chatId), text }),
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Telegram sendMessage failed: ${res.status} ${body}`);
-  }
-  return res.json();
+  return parseTelegramResponse(res, "sendMessage");
 }
 
 export async function sendTelegramLongMessage(botToken, chatId, text) {
@@ -41,7 +61,7 @@ export async function sendTelegramLongMessage(botToken, chatId, text) {
 
 export async function sendTelegramVoiceDocument(botToken, chatId, blob, filename, caption) {
   const form = new FormData();
-  form.append("chat_id", String(chatId));
+  form.append("chat_id", normalizeChatId(chatId));
   form.append("caption", caption.slice(0, 1024));
   form.append("document", blob, filename);
 
@@ -49,9 +69,5 @@ export async function sendTelegramVoiceDocument(botToken, chatId, blob, filename
     method: "POST",
     body: form,
   });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Telegram sendDocument failed: ${res.status} ${body}`);
-  }
-  return res.json();
+  return parseTelegramResponse(res, "sendDocument");
 }
