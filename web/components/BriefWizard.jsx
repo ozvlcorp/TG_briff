@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { QUESTIONS, SCOPE_CHOICES } from "../lib/questions";
+import { COMPANY, companyContacts } from "../lib/company";
+import Logo from "./Logo";
 
 const STEP_INTRO = "intro";
 const STEP_QUESTIONS = "questions";
@@ -257,6 +259,19 @@ export default function BriefWizard() {
     }
   };
 
+  // PDF: brauzerning chop etish oynasi orqali ("Saqlash → PDF"). Bu yo'l
+  // barcha harflar (UZ/RU/kirill) va emojini to'g'ri ko'rsatadi va tashqi
+  // kutubxona talab qilmaydi. Chop etiladigan hujjat pastda .print-doc'da.
+  const handleDownloadPdf = () => {
+    const safeName = (clientName || "mijoz").trim().replace(/\s+/g, "-").replace(/[^\w\-.]/g, "");
+    const prevTitle = document.title;
+    document.title = `${COMPANY.name}-brief-${safeName}`;
+    window.addEventListener("afterprint", () => {
+      document.title = prevTitle;
+    }, { once: true });
+    window.print();
+  };
+
   const submitBrief = async (finalAnswers) => {
     setSubmitting(true);
     setErrorMessage("");
@@ -296,8 +311,14 @@ export default function BriefWizard() {
   if (step === STEP_INTRO) {
     return (
       <div className="card intro-card">
-        <div className="intro-icon">🤖</div>
-        <h1>Ozvlcorp — HR &amp; Moliya AI-agent brifi</h1>
+        <div className="brand">
+          <Logo size={40} className="brand-logo" />
+          <div className="brand-text">
+            <span className="brand-name">{COMPANY.name}</span>
+            <span className="brand-tagline">{COMPANY.tagline}</span>
+          </div>
+        </div>
+        <h1>HR &amp; Moliya AI-agent brifi</h1>
         <p>
           Bizga bir necha savolga javob bering — matn yoki ovoz bilan. Shundan so'ng jamoamiz
           sizga mos AI-agent taklifini tayyorlaydi.
@@ -410,29 +431,76 @@ export default function BriefWizard() {
 
   if (step === STEP_DONE) {
     return (
-      <div className="card done-card">
-        <ConfettiBurst />
-        <SuccessIcon />
-        <h1>Rahmat! Brif tayyor 🎉</h1>
-        <p>Ma'lumotlaringiz jamoamizga yuborildi. 24 soat ichida siz bilan bog'lanamiz.</p>
-        <div className="success-actions">
-          <button type="button" className="btn btn-secondary" onClick={handleCopyTz}>
-            {copied ? "✅ Nusxalandi" : "📋 ТЗ nusxasini olish"}
-          </button>
+      <>
+        <div className="card done-card app-shell">
+          <ConfettiBurst />
+          <div className="brand brand-center">
+            <Logo size={34} className="brand-logo" />
+            <span className="brand-name">{COMPANY.name}</span>
+          </div>
+          <SuccessIcon />
+          <h1>Rahmat! Brif tayyor 🎉</h1>
+          <p>Ma'lumotlaringiz {COMPANY.name} jamoasiga yuborildi. 24 soat ichida siz bilan bog'lanamiz.</p>
+          <div className="success-actions">
+            <button type="button" className="btn btn-primary" onClick={handleDownloadPdf}>
+              📄 PDF yuklab olish
+            </button>
+            <button type="button" className="btn btn-secondary" onClick={handleCopyTz}>
+              {copied ? "✅ Nusxalandi" : "📋 Matnni nusxalash"}
+            </button>
+          </div>
+          <pre className="tz-output">{resultTz}</pre>
         </div>
-        <pre className="tz-output">{resultTz}</pre>
-      </div>
+        <PrintDoc tz={resultTz} clientName={clientName} clientContact={clientContact} />
+      </>
     );
   }
 
   return (
-    <div className="card error-card">
+    <div className="card error-card app-shell">
       <div className="error-icon">⚠️</div>
       <h1>Xatolik yuz berdi</h1>
       <p className="error-text">{errorMessage}</p>
       <button type="button" className="btn btn-primary" onClick={() => setStep(STEP_QUESTIONS)}>
         Qayta urinish
       </button>
+    </div>
+  );
+}
+
+function PrintDoc({ tz, clientName, clientContact }) {
+  const contacts = companyContacts();
+  return (
+    <div className="print-doc" aria-hidden="true">
+      <header className="print-head">
+        <div className="print-brand">
+          <Logo size={44} />
+          <div>
+            <div className="print-company">{COMPANY.fullName}</div>
+            <div className="print-tagline">{COMPANY.tagline}</div>
+          </div>
+        </div>
+      </header>
+
+      <div className="print-client">
+        {clientName ? <div><strong>Mijoz:</strong> {clientName}</div> : null}
+        {clientContact ? <div><strong>Kontakt:</strong> {clientContact}</div> : null}
+      </div>
+
+      <pre className="print-tz">{tz}</pre>
+
+      {contacts.length > 0 && (
+        <footer className="print-foot">
+          <div className="print-foot-title">{COMPANY.name} bilan bog'lanish</div>
+          <div className="print-foot-contacts">
+            {contacts.map((c) => (
+              <span key={c.label}>
+                <strong>{c.label}:</strong> {c.value}
+              </span>
+            ))}
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

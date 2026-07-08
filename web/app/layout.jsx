@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Ozvlcorp — AI-agent brifi",
+  title: "OY — AI-agent brifi",
   description: "HR va moliya AI-agentlar uchun ovozli/matnli brif-forma",
 };
 
