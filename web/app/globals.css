@@ -682,19 +682,101 @@ textarea:focus {
   }
 }
 
-/* ---- Chop etiladigan hujjat (PDF) ---- */
+/* ---- Chop etiladigan / PDF hujjati ----
+   Ekrandan tashqarida (chapga surilgan) render bo'ladi, shunda html2canvas
+   uni istalgan paytda rasmga ola oladi. Ranglari doim yorug' (oq fon, qora
+   matn) — mavzudan qat'i nazar, PDF toza chiqishi uchun. */
 .print-doc {
-  display: none;
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  width: 760px;
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #111111;
+  padding: 44px 48px;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
-@media screen {
-  .print-doc {
-    display: none;
-  }
+.print-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 2px solid #111111;
+  padding-bottom: 16px;
+  margin-bottom: 22px;
 }
 
+.print-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #111111;
+}
+
+.print-company {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.print-tagline {
+  font-size: 13px;
+  color: #555555;
+  margin-top: 2px;
+}
+
+.print-date {
+  font-size: 12px;
+  color: #666666;
+  white-space: nowrap;
+}
+
+.print-client {
+  font-size: 14px;
+  margin-bottom: 20px;
+  line-height: 1.7;
+  color: #222222;
+}
+
+.print-tz {
+  white-space: pre-wrap;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #111111;
+  margin: 0;
+}
+
+.print-foot {
+  margin-top: 34px;
+  padding-top: 16px;
+  border-top: 1px solid #cccccc;
+  font-size: 13px;
+  color: #444444;
+}
+
+.print-foot-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: #222222;
+}
+
+.print-foot-contacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  margin-bottom: 10px;
+}
+
+.print-foot-note {
+  font-size: 11px;
+  color: #888888;
+}
+
+/* Zaxira: foydalanuvchi Ctrl+P bossa ham toza chiqsin */
 @media print {
-  /* Ekran interfeysini yashiramiz, faqat hujjatni ko'rsatamiz */
   .page::before,
   .page::after {
     display: none !important;
@@ -708,75 +790,15 @@ textarea:focus {
   }
   body {
     background: #fff;
-    color: #000;
   }
-
   .print-doc {
-    display: block;
+    position: static;
+    left: auto;
+    width: auto;
     max-width: 720px;
     margin: 0 auto;
-    padding: 24px 8px;
-    color: #111;
-    font-size: 12pt;
+    padding: 0;
   }
-
-  .print-head {
-    border-bottom: 2px solid #111;
-    padding-bottom: 14px;
-    margin-bottom: 18px;
-  }
-
-  .print-brand {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    color: #111;
-  }
-
-  .print-company {
-    font-size: 16pt;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-  }
-
-  .print-tagline {
-    font-size: 10.5pt;
-    color: #444;
-  }
-
-  .print-client {
-    font-size: 11pt;
-    margin-bottom: 16px;
-    line-height: 1.6;
-  }
-
-  .print-tz {
-    white-space: pre-wrap;
-    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    font-size: 11.5pt;
-    line-height: 1.55;
-    margin: 0;
-  }
-
-  .print-foot {
-    margin-top: 28px;
-    padding-top: 14px;
-    border-top: 1px solid #bbb;
-    font-size: 10.5pt;
-    color: #333;
-  }
-
-  .print-foot-title {
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-
-  .print-foot-contacts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 18px;
-  }
-
   @page {
     margin: 16mm;
   }

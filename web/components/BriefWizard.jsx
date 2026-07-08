@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { QUESTIONS, SCOPE_CHOICES } from "../lib/questions";
 import { COMPANY, companyContacts } from "../lib/company";
 import Logo from "./Logo";
+
+// PDF rasterlashда emoji "tofu" bo'lmasligi uchun ularni olib tashlaymiz
+// (matn — kirill/lotin — o'zi to'g'ri chiqadi).
+function stripEmoji(text) {
+  return (text || "")
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/^[ \t]+/gm, (m) => m); // tekislashni saqlaymiz
+}
 
 const STEP_INTRO = "intro";
 const STEP_QUESTIONS = "questions";
@@ -188,6 +197,8 @@ export default function BriefWizard() {
   const [resultTz, setResultTz] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [copied, setCopied] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const printRef = useRef(null);
 
   const question = QUESTIONS[index];
   const isLast = index === QUESTIONS.length - 1;
@@ -259,17 +270,59 @@ export default function BriefWizard() {
     }
   };
 
-  // PDF: brauzerning chop etish oynasi orqali ("Saqlash → PDF"). Bu yo'l
-  // barcha harflar (UZ/RU/kirill) va emojini to'g'ri ko'rsatadi va tashqi
-  // kutubxona talab qilmaydi. Chop etiladigan hujjat pastda .print-doc'da.
-  const handleDownloadPdf = () => {
-    const safeName = (clientName || "mijoz").trim().replace(/\s+/g, "-").replace(/[^\w\-.]/g, "");
-    const prevTitle = document.title;
-    document.title = `${COMPANY.name}-brief-${safeName}`;
-    window.addEventListener("afterprint", () => {
-      document.title = prevTitle;
-    }, { once: true });
-    window.print();
+  // Haqiqiy bir bosishli PDF yuklab olish. Brend hujjatini (.print-doc)
+  // html2canvas bilan rasmga olamiz va jsPDF bilan A4 PDF qilamiz — chop
+  // etish oynasi kerak emas, UZ/RU/kirill matnlar to'g'ri chiqadi.
+  // Kutubxonalar faqat bosilganda yuklanadi (lazy import).
+  const handleDownloadPdf = async () => {
+    const el = printRef.current;
+    if (!el || pdfBusy) return;
+    setPdfBusy(true);
+    const safeName = (clientName || "mijoz").trim().replace(/\s+/g, "-").replace(/[^\w\-.]/g, "") || "mijoz";
+    try {
+      const [{ jsPDF }, html2canvasMod] = await Promise.all([
+        import("jspdf"),
+        import("html2canvas"),
+      ]);
+      const html2canvas = html2canvasMod.default || html2canvasMod;
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        windowWidth: el.scrollWidth,
+      });
+
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      // JPEG — oq fondagi matn uchun hajm keskin kichik, sifat yetarli
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position -= pageH;
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+      pdf.save(`${COMPANY.name}-brief-${safeName}.pdf`);
+    } catch (err) {
+      console.error("PDF yaratishда xatolik, chop etishga o'tamiz:", err);
+      // Zaxira yo'l: brauzer chop etish oynasi (Saqlash → PDF)
+      try {
+        window.print();
+      } catch {
+        /* ignore */
+      }
+    } finally {
+      setPdfBusy(false);
+    }
   };
 
   const submitBrief = async (finalAnswers) => {
@@ -442,8 +495,14 @@ export default function BriefWizard() {
           <h1>Rahmat! Brif tayyor 🎉</h1>
           <p>Ma'lumotlaringiz {COMPANY.name} jamoasiga yuborildi. 24 soat ichida siz bilan bog'lanamiz.</p>
           <div className="success-actions">
-            <button type="button" className="btn btn-primary" onClick={handleDownloadPdf}>
-              📄 PDF yuklab olish
+            <button type="button" className="btn btn-primary" onClick={handleDownloadPdf} disabled={pdfBusy}>
+              {pdfBusy ? (
+                <span className="btn-spinner-wrap">
+                  <span className="spinner" /> Tayyorlanmoqda...
+                </span>
+              ) : (
+                "📄 PDF yuklab olish"
+              )}
             </button>
             <button type="button" className="btn btn-secondary" onClick={handleCopyTz}>
               {copied ? "✅ Nusxalandi" : "📋 Matnni nusxalash"}
@@ -451,7 +510,7 @@ export default function BriefWizard() {
           </div>
           <pre className="tz-output">{resultTz}</pre>
         </div>
-        <PrintDoc tz={resultTz} clientName={clientName} clientContact={clientContact} />
+        <PrintDoc ref={printRef} tz={resultTz} clientName={clientName} clientContact={clientContact} />
       </>
     );
   }
@@ -468,10 +527,13 @@ export default function BriefWizard() {
   );
 }
 
-function PrintDoc({ tz, clientName, clientContact }) {
+const PrintDoc = forwardRef(function PrintDoc({ tz, clientName, clientContact }, ref) {
   const contacts = companyContacts();
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  const today = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
   return (
-    <div className="print-doc" aria-hidden="true">
+    <div className="print-doc" ref={ref} aria-hidden="true">
       <header className="print-head">
         <div className="print-brand">
           <Logo size={44} />
@@ -480,6 +542,7 @@ function PrintDoc({ tz, clientName, clientContact }) {
             <div className="print-tagline">{COMPANY.tagline}</div>
           </div>
         </div>
+        <div className="print-date">{today}</div>
       </header>
 
       <div className="print-client">
@@ -487,20 +550,25 @@ function PrintDoc({ tz, clientName, clientContact }) {
         {clientContact ? <div><strong>Kontakt:</strong> {clientContact}</div> : null}
       </div>
 
-      <pre className="print-tz">{tz}</pre>
+      <pre className="print-tz">{stripEmoji(tz)}</pre>
 
-      {contacts.length > 0 && (
-        <footer className="print-foot">
-          <div className="print-foot-title">{COMPANY.name} bilan bog'lanish</div>
-          <div className="print-foot-contacts">
-            {contacts.map((c) => (
-              <span key={c.label}>
-                <strong>{c.label}:</strong> {c.value}
-              </span>
-            ))}
-          </div>
-        </footer>
-      )}
+      <footer className="print-foot">
+        {contacts.length > 0 && (
+          <>
+            <div className="print-foot-title">{COMPANY.name} bilan bog'lanish</div>
+            <div className="print-foot-contacts">
+              {contacts.map((c) => (
+                <span key={c.label}>
+                  <strong>{c.label}:</strong> {c.value}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+        <div className="print-foot-note">
+          {COMPANY.fullName} · Ushbu hujjat {COMPANY.name} brif tizimi orqali tayyorlandi.
+        </div>
+      </footer>
     </div>
   );
-}
+});
