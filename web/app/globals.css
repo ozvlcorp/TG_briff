@@ -6,8 +6,11 @@
   --border: #e2e4e9;
   --primary: #2f6feb;
   --primary-hover: #2557c7;
+  --primary-soft: #e8f0ff;
+  --success: #1fa971;
   --danger: #d1453b;
-  --radius: 12px;
+  --radius: 16px;
+  --shadow: 0 20px 60px -20px rgba(30, 41, 59, 0.25), 0 4px 12px -4px rgba(30, 41, 59, 0.1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -19,6 +22,9 @@
     --border: #2c303a;
     --primary: #5b8ff9;
     --primary-hover: #7ba3fa;
+    --primary-soft: #223154;
+    --success: #34c98f;
+    --shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.65), 0 4px 12px -4px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -40,11 +46,51 @@ body {
 }
 
 .page {
+  position: relative;
   min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.page::before,
+.page::after {
+  content: "";
+  position: absolute;
+  width: 480px;
+  height: 480px;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.28;
+  z-index: -1;
+  animation: float 18s ease-in-out infinite;
+}
+
+.page::before {
+  background: var(--primary);
+  top: -180px;
+  left: -160px;
+}
+
+.page::after {
+  background: var(--success);
+  bottom: -180px;
+  right: -160px;
+  animation-delay: -9s;
+  animation-direction: reverse;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(40px, -30px) scale(1.12);
+  }
 }
 
 .card {
@@ -57,6 +103,37 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  box-shadow: var(--shadow);
+  animation: cardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.question-block {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: questionIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes questionIn {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 h1 {
@@ -77,6 +154,37 @@ p {
 .hint {
   font-size: 0.9rem;
   font-style: italic;
+}
+
+.intro-icon {
+  font-size: 2.5rem;
+  align-self: flex-start;
+  animation: floatIcon 3s ease-in-out infinite;
+}
+
+@keyframes floatIcon {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.feature-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.feature-pill {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: 999px;
+  padding: 6px 12px;
 }
 
 .field {
@@ -100,22 +208,28 @@ textarea {
   border-radius: 8px;
   padding: 10px 12px;
   resize: vertical;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 input:focus,
 textarea:focus {
-  outline: 2px solid var(--primary);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
 .btn {
   font: inherit;
   font-weight: 600;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 12px 20px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .btn:disabled {
@@ -126,10 +240,12 @@ textarea:focus {
 .btn-primary {
   background: var(--primary);
   color: white;
+  box-shadow: 0 8px 18px -8px rgba(0, 0, 0, 0.35);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--primary-hover);
+  transform: translateY(-1px);
 }
 
 .btn-secondary {
@@ -138,9 +254,35 @@ textarea:focus {
   border: 1px solid var(--border);
 }
 
+.btn-secondary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--primary);
+}
+
 .btn-recording {
   background: var(--danger);
   color: white;
+}
+
+.btn-spinner-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .btn-link {
@@ -151,6 +293,11 @@ textarea:focus {
   cursor: pointer;
   padding: 6px 4px;
   text-decoration: underline;
+  transition: color 0.15s ease;
+}
+
+.btn-link:hover:not(:disabled) {
+  color: var(--text);
 }
 
 .btn-link:disabled {
@@ -170,21 +317,40 @@ textarea:focus {
   font-size: 0.9rem;
   background: var(--bg);
   color: var(--primary);
-  border: 1px solid var(--primary);
+  border: 1.5px solid var(--primary);
   border-radius: 999px;
-  padding: 8px 16px;
+  padding: 9px 18px;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .chip:hover:not(:disabled) {
   background: var(--primary);
   color: white;
+  transform: translateY(-1px);
 }
 
 .chip:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.chip.selected {
+  background: var(--primary);
+  color: white;
+  animation: chipPop 0.3s ease;
+}
+
+@keyframes chipPop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .or-divider {
@@ -197,8 +363,102 @@ textarea:focus {
 .voice-recorder {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-start;
+}
+
+.record-btn-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.record-btn-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  border: 2px solid var(--danger);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.record-btn-wrap.recording::before {
+  animation: pulseRing 1.6s ease-out infinite;
+}
+
+@keyframes pulseRing {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+.recording-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.eq-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 16px;
+}
+
+.eq-bars span {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--danger);
+  animation: eq 0.9s ease-in-out infinite;
+}
+
+.eq-bars span:nth-child(1) {
+  animation-delay: 0s;
+}
+.eq-bars span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.eq-bars span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.eq-bars span:nth-child(4) {
+  animation-delay: 0.45s;
+}
+
+@keyframes eq {
+  0%,
+  100% {
+    height: 4px;
+  }
+  50% {
+    height: 16px;
+  }
 }
 
 .voice-preview {
@@ -220,26 +480,141 @@ textarea:focus {
   margin-top: 8px;
 }
 
-.progress-bar {
-  height: 6px;
-  background: var(--border);
+.progress-track {
+  display: flex;
+  gap: 4px;
+}
+
+.progress-segment {
+  flex: 1;
+  height: 5px;
   border-radius: 999px;
+  background: var(--border);
   overflow: hidden;
+  position: relative;
 }
 
-.progress-fill {
-  height: 100%;
-  background: var(--primary);
-  transition: width 0.2s ease;
+.progress-segment::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--primary), var(--success));
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.progress-label {
+.progress-segment.filled::after {
+  transform: scaleX(1);
+}
+
+.progress-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
   font-size: 0.8rem;
-  margin-top: -8px;
+  color: var(--text-muted);
+}
+
+.progress-percent {
+  font-weight: 700;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.done-card,
+.error-card {
+  position: relative;
+  overflow: hidden;
+  align-items: center;
+  text-align: center;
+}
+
+.success-icon {
+  width: 72px;
+  height: 72px;
+}
+
+.success-icon circle {
+  stroke: var(--success);
+  stroke-width: 4;
+  fill: none;
+  stroke-dasharray: 152;
+  stroke-dashoffset: 152;
+  animation: circleDraw 0.6s ease forwards;
+}
+
+.success-icon path {
+  stroke: var(--success);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  stroke-dasharray: 34;
+  stroke-dashoffset: 34;
+  animation: checkDraw 0.35s ease forwards 0.55s;
+}
+
+@keyframes circleDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes checkDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.error-icon {
+  font-size: 2.5rem;
+}
+
+.confetti {
+  position: absolute;
+  /* Rounded-corner clipping + animated children can leak a stray pixel in
+     some Chromium builds; staying inset from the card's own radius zone
+     gives this its own straight-edge clip boundary as a second guard. */
+  inset: 24px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti span {
+  position: absolute;
+  top: 0;
+  font-size: 1.15rem;
+  opacity: 0;
+  animation-name: confettiFall;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+}
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(320px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.success-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .tz-output {
   white-space: pre-wrap;
+  text-align: left;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -247,8 +622,30 @@ textarea:focus {
   font-size: 0.85rem;
   max-height: 60vh;
   overflow-y: auto;
+  width: 100%;
+  animation: fadeIn 0.5s ease 0.2s both;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .error-text {
   color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
