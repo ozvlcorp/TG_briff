@@ -71,3 +71,19 @@ export async function sendTelegramVoiceDocument(botToken, chatId, blob, filename
   });
   return parseTelegramResponse(res, "sendDocument");
 }
+
+// mp3/m4a audio — Telegram'да o'ynatiladigan audio treki sifatida ko'rinadi.
+export async function sendTelegramAudio(botToken, chatId, blob, filename, caption, { title, performer } = {}) {
+  const form = new FormData();
+  form.append("chat_id", normalizeChatId(chatId));
+  form.append("caption", caption.slice(0, 1024));
+  if (title) form.append("title", title.slice(0, 64));
+  if (performer) form.append("performer", performer.slice(0, 64));
+  form.append("audio", blob, filename);
+
+  const res = await fetch(apiUrl(botToken, "sendAudio"), {
+    method: "POST",
+    body: form,
+  });
+  return parseTelegramResponse(res, "sendAudio");
+}

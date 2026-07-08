@@ -333,6 +333,19 @@ export default function BriefWizard() {
       formData.append("client_name", clientName);
       formData.append("client_contact", clientContact);
 
+      // Ovoz javoblarini yuborishдан oldin mp3 ga o'giramiz (Telegram'да
+      // o'ynatiladigan audio bo'lishi uchun). Konverter faqat kerak bo'lganда
+      // yuklanadi; xato bo'lsa asl webm yuboriladi (zaxira).
+      let toMp3 = null;
+      const hasVoice = QUESTIONS.some((q) => finalAnswers[q.key]?.kind === "voice" && finalAnswers[q.key]?.blob);
+      if (hasVoice) {
+        try {
+          ({ blobToMp3: toMp3 } = await import("../lib/audio"));
+        } catch {
+          toMp3 = null;
+        }
+      }
+
       for (const q of QUESTIONS) {
         const a = finalAnswers[q.key];
         if (!a) {
@@ -343,7 +356,17 @@ export default function BriefWizard() {
         if (a.kind === "text") {
           formData.append(`${q.key}__text`, a.text || "");
         } else if (a.kind === "voice" && a.blob) {
-          formData.append(`${q.key}__voice`, a.blob, `${q.key}.webm`);
+          let out = a.blob;
+          let filename = `${q.key}.webm`;
+          if (toMp3) {
+            try {
+              out = await toMp3(a.blob);
+              filename = `${q.key}.mp3`;
+            } catch (convErr) {
+              console.error("Ovozni mp3 ga o'girib bo'lmadi, webm yuboriladi:", convErr);
+            }
+          }
+          formData.append(`${q.key}__voice`, out, filename);
         }
       }
 
