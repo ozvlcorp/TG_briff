@@ -1,5 +1,5 @@
 import { QUESTIONS, classifyScope, renderTz } from "../../../lib/questions";
-import { sendTelegramLongMessage, sendTelegramVoiceDocument } from "../../../lib/telegram";
+import { sendTelegramAudio, sendTelegramLongMessage, sendTelegramVoiceDocument } from "../../../lib/telegram";
 
 export const runtime = "nodejs";
 
@@ -62,13 +62,29 @@ export async function POST(request) {
 
     if (voiceEntries.length > 0) {
       await sendTelegramLongMessage(botToken, adminChatId, `🎤 Ovozli javoblar: ${voiceEntries.length} ta`);
+      const clientLabel = displayName(clientName, clientContact);
       for (const { question, file } of voiceEntries) {
         const num = QUESTIONS.findIndex((q) => q.key === question.key) + 1;
         const caption = `Savol ${num}. ${question.text}`;
         const arrayBuffer = await file.arrayBuffer();
-        const blob = new Blob([arrayBuffer], { type: file.type || "audio/webm" });
-        const filename = `javob_${num}.webm`;
-        await sendTelegramVoiceDocument(botToken, adminChatId, blob, filename, caption);
+        const type = file.type || "";
+        const name = typeof file.name === "string" ? file.name : "";
+        const isAudio = type.includes("mpeg") || type.includes("mp3") || name.endsWith(".mp3");
+        const blob = new Blob([arrayBuffer], { type: isAudio ? "audio/mpeg" : type || "audio/webm" });
+
+        if (isAudio) {
+          try {
+            await sendTelegramAudio(botToken, adminChatId, blob, `javob_${num}.mp3`, caption, {
+              title: `Savol ${num} javobi`,
+              performer: clientLabel,
+            });
+            continue;
+          } catch (audioErr) {
+            console.error("sendAudio muvaffaqiyatsiz, hujjat sifatida yuboramiz:", audioErr);
+          }
+        }
+        // Zaxira: audio bo'lmasa yoki sendAudio ishlamasa — hujjat sifatida
+        await sendTelegramVoiceDocument(botToken, adminChatId, blob, name || `javob_${num}.webm`, caption);
       }
     }
   } catch (err) {
